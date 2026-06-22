@@ -26,6 +26,14 @@ export interface CameraController {
   setTorch(on: boolean): Promise<void>;
   /** Grab the current frame as a downscaled JPEG, or null if unavailable. */
   captureFrame(): Promise<Blob | null>;
+  /** Focus the lens at a normalised (0..1) point in the frame. Best-effort. */
+  focusAt(xNorm: number, yNorm: number): Promise<void>;
+  /**
+   * Take a full-resolution still and decode it. For dense codes (PDF417,
+   * Aztec) the soft live preview often won't resolve the fine structure; a
+   * crisp photo will. Returns all codes found in the still.
+   */
+  scanStill(): Promise<ScanHit[]>;
 }
 
 const NATIVE_FORMATS: BarcodeFormat[] = [
@@ -107,10 +115,55 @@ export async function startScanner(
     video.srcObject = null;
   }
 
+  // Highest-quality still we can get: a real photo (autofocused, full sensor
+  // resolution) when ImageCapture supports it, else a grabbed frame, else the
+  // video element. Caller must close() the returned bitmap.
+  async function grabHiRes(): Promise<ImageBitmap | null> {
+    // ImageCapture isn't in the standard TS DOM lib; type its shape inline.
+    const ImageCaptureCtor = (window as unknown as {
+      ImageCapture?: new (t: MediaStreamTrack) => {
+        takePhoto(): Promise<Blob>;
+        grabFrame(): Promise<ImageBitmap>;
+      };
+    }).ImageCapture;
+    try {
+      if (ImageCaptureCtor) {
+        const capture = new ImageCaptureCtor(track);
+        try {
+          const blob = await capture.takePhoto();
+          return await createImageBitmap(blob);
+        } catch {
+          return await capture.grabFrame();
+        }
+      }
+    } catch {
+      /* fall through to the video frame */
+    }
+    if (video.videoWidth) return createImageBitmap(video);
+    return null;
+  }
+
+  async function focusAt(xNorm: number, yNorm: number): Promise<void> {
+    const caps = track.getCapabilities?.();
+    const advanced: MediaTrackConstraintSet[] = [];
+    if (caps && 'pointsOfInterest' in caps) {
+      advanced.push({ pointsOfInterest: [{ x: xNorm, y: yNorm }] });
+    }
+    if (caps?.focusMode?.includes('single-shot')) advanced.push({ focusMode: 'single-shot' });
+    else if (caps?.focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
+    if (!advanced.length) return;
+    try {
+      await track.applyConstraints({ advanced });
+    } catch {
+      /* best-effort; ignore rejected focus constraints */
+    }
+  }
+
   const base = {
     hasTorch: () => torchSupported,
     setTorch,
-    captureFrame
+    captureFrame,
+    focusAt
   };
 
   if (window.BarcodeDetector) {
@@ -137,9 +190,25 @@ export async function startScanner(
       }
     }, 150);
 
+    async function scanStill(): Promise<ScanHit[]> {
+      const bitmap = await grabHiRes();
+      if (!bitmap) return [];
+      try {
+        const found = await detector.detect(bitmap);
+        return found
+          .filter((b) => b.rawValue)
+          .map((b) => ({ code: b.rawValue, format: b.format }));
+      } catch {
+        return [];
+      } finally {
+        bitmap.close();
+      }
+    }
+
     return {
       ...base,
       engine: 'native',
+      scanStill,
       stop() {
         stopped = true;
         window.clearInterval(timer);
@@ -181,9 +250,36 @@ export async function startScanner(
     }
   );
 
+  async function scanStill(): Promise<ScanHit[]> {
+    const bitmap = await grabHiRes();
+    if (!bitmap) return [];
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return [];
+      ctx.drawImage(bitmap, 0, 0);
+      try {
+        const result = reader.decodeFromCanvas(canvas);
+        return [
+          {
+            code: result.getText(),
+            format: ZXingFormat[result.getBarcodeFormat()].toLowerCase()
+          }
+        ];
+      } catch {
+        return []; // ZXing throws NotFoundException when nothing decodes
+      }
+    } finally {
+      bitmap.close();
+    }
+  }
+
   return {
     ...base,
     engine: 'zxing',
+    scanStill,
     stop() {
       controls.stop();
       stopStream();

@@ -48,10 +48,12 @@ declare global {
     torch?: boolean;
     focusMode?: string;
     focusDistance?: number;
+    pointsOfInterest?: Array<{ x: number; y: number }>;
   }
   interface MediaTrackCapabilities {
     torch?: boolean;
     focusMode?: string[];
     focusDistance?: { min: number; max: number; step: number };
+    pointsOfInterest?: unknown;
   }
 }
