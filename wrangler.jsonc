@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // NOTE: this name MUST match the Worker that Cloudflare created when you
+  // imported the repo. Confirm it in the dashboard (Workers & Pages -> your
+  // project) and tell me if it differs from this.
+  "name": "qr-codemonkey",
+  "compatibility_date": "2025-06-01",
+  // Static-assets-only Worker: no server script, just serve the built site.
+  // SPA fallback so any path returns index.html (handles refresh/deep links).
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
