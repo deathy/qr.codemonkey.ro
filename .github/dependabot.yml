@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    # Dependabot only ever opens PRs — nothing is merged without your review.
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+    groups:
+      # Bundle minor + patch bumps into a single PR to cut noise. Major bumps
+      # come as individual PRs so each can be reviewed deliberately.
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
