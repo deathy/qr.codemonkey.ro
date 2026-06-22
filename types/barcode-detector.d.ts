@@ -42,11 +42,16 @@ declare global {
     BarcodeDetector?: typeof BarcodeDetector;
   }
 
-  // Torch is a non-standard but widely-supported MediaTrack constraint on Android.
+  // Torch + focus are non-standard but widely-supported MediaTrack features on
+  // Android. Not in the standard lib types, so we declare what we use.
   interface MediaTrackConstraintSet {
     torch?: boolean;
+    focusMode?: string;
+    focusDistance?: number;
   }
   interface MediaTrackCapabilities {
     torch?: boolean;
+    focusMode?: string[];
+    focusDistance?: { min: number; max: number; step: number };
   }
 }

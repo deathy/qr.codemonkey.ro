@@ -39,13 +39,28 @@ async function startCamera(
   const stream = await navigator.mediaDevices.getUserMedia({
     video: {
       facingMode: { ideal: facingMode },
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
+      // Ask for 1080p: encourages the main (autofocus) rear camera over a
+      // fixed-focus ultrawide, and gives sharper detail for small barcodes.
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
     },
     audio: false
   });
   const track = stream.getVideoTracks()[0];
   return { stream, track };
+}
+
+// Default focus on Android is often left at a far/fixed distance, so a code
+// held close stays blurred. Request continuous autofocus when the camera
+// supports it. Best-effort: capability names are non-standard and vary.
+async function applyContinuousFocus(track: MediaStreamTrack): Promise<void> {
+  const caps = track.getCapabilities?.();
+  if (!caps?.focusMode?.includes('continuous')) return;
+  try {
+    await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+  } catch {
+    /* some devices reject focus constraints mid-stream; ignore */
+  }
 }
 
 export async function startScanner(
@@ -57,6 +72,7 @@ export async function startScanner(
   video.srcObject = stream;
   video.setAttribute('playsinline', 'true');
   await video.play();
+  await applyContinuousFocus(track);
 
   const torchSupported = Boolean(track.getCapabilities?.().torch);
   const captureCanvas = document.createElement('canvas');
