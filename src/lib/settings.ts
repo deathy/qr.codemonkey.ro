@@ -5,11 +5,12 @@ const KEY = 'qr.settings.v1';
 export const DEFAULT_SETTINGS: Settings = {
   saveGps: false,
   saveImage: false,
-  cooldownMs: 1500,
+  cooldownMs: 2000,
   facingMode: 'environment',
   cameraId: null,
   torch: false,
-  forceZxing: false
+  forceZxing: false,
+  sound: true
 };
 
 export function loadSettings(): Settings {

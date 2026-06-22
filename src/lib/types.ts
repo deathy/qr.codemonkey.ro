@@ -40,6 +40,8 @@ export interface Settings {
   torch: boolean;
   /** Force the ZXing engine even when the native detector is available. */
   forceZxing: boolean;
+  /** Play a short blip on each successful scan. */
+  sound: boolean;
 }
 
 export const EXPORT_VERSION = 1;

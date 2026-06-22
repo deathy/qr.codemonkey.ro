@@ -76,6 +76,13 @@ export function SettingsView({ settings, onChange }: Props) {
       />
 
       <Toggle
+        label="Scan sound"
+        hint="Play a short blip on each successful scan (in addition to the vibration)."
+        checked={settings.sound}
+        onChange={(v) => onChange({ sound: v })}
+      />
+
+      <Toggle
         label="Always use ZXing engine"
         hint="Skip the device's native detector and always decode with ZXing. Slower and heavier on the battery, but stronger on dense codes (PDF417/Aztec). Mainly for testing."
         checked={settings.forceZxing}
