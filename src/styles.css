@@ -281,6 +281,16 @@ select {
   color: var(--text-dim);
   line-height: 1.5;
 }
+.build-info {
+  margin-top: 16px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+}
+.build-info a {
+  color: var(--accent);
+  text-decoration: none;
+}
 
 /* ---------- toast ---------- */
 .toast {

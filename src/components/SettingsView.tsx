@@ -98,6 +98,17 @@ export function SettingsView({ settings, onChange }: Props) {
         Everything stays on this device. No accounts, no servers, no analytics. Your scans,
         locations and images never leave your browser unless you export them yourself.
       </p>
+
+      <p class="build-info">
+        <a
+          href={`https://github.com/deathy/qr.codemonkey.ro/commit/${__COMMIT__}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {__COMMIT__}
+        </a>{' '}
+        · built {new Date(__BUILD_TIME__).toLocaleString()}
+      </p>
     </div>
   );
 }
