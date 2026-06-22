@@ -107,7 +107,7 @@ export function SettingsView({ settings, onChange }: Props) {
         >
           {__COMMIT__}
         </a>{' '}
-        · built {new Date(__BUILD_TIME__).toLocaleString()}
+        · built {__BUILD_TIME__.slice(0, 19)}Z
       </p>
     </div>
   );
