@@ -41,6 +41,74 @@ const NATIVE_FORMATS: BarcodeFormat[] = [
   'ean_13', 'ean_8', 'itf', 'pdf417', 'qr_code', 'upc_a', 'upc_e'
 ];
 
+// Lazy, memoised ZXing loader. ZXing (~300KB) is fetched only when actually
+// needed: the fallback engine, or a "Capture" still-decode on the native path
+// (the native BarcodeDetector is weak at PDF417/Aztec).
+type ZxingModule = {
+  BrowserMultiFormatReader: typeof import('@zxing/browser').BrowserMultiFormatReader;
+  ZXingFormat: typeof import('@zxing/library').BarcodeFormat;
+  hints: Map<number, unknown>;
+};
+let zxingPromise: Promise<ZxingModule> | null = null;
+function loadZxing(): Promise<ZxingModule> {
+  if (!zxingPromise) {
+    zxingPromise = (async () => {
+      const [{ BrowserMultiFormatReader }, { DecodeHintType, BarcodeFormat: ZXingFormat }] =
+        await Promise.all([import('@zxing/browser'), import('@zxing/library')]);
+      const hints = new Map<number, unknown>([
+        [
+          DecodeHintType.POSSIBLE_FORMATS,
+          [
+            ZXingFormat.AZTEC, ZXingFormat.CODE_128, ZXingFormat.CODE_39,
+            ZXingFormat.CODE_93, ZXingFormat.CODABAR, ZXingFormat.DATA_MATRIX,
+            ZXingFormat.EAN_13, ZXingFormat.EAN_8, ZXingFormat.ITF,
+            ZXingFormat.PDF_417, ZXingFormat.QR_CODE, ZXingFormat.UPC_A,
+            ZXingFormat.UPC_E
+          ]
+        ],
+        [DecodeHintType.TRY_HARDER, true]
+      ]);
+      return { BrowserMultiFormatReader, ZXingFormat, hints };
+    })();
+  }
+  return zxingPromise;
+}
+
+// Draw a bitmap into a canvas, rotated by `deg` (0/90/180/270).
+function rotateBitmapToCanvas(bitmap: ImageBitmap, deg: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  const swap = deg === 90 || deg === 270;
+  canvas.width = swap ? bitmap.height : bitmap.width;
+  canvas.height = swap ? bitmap.width : bitmap.height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((deg * Math.PI) / 180);
+  ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+  return canvas;
+}
+
+// Decode a still with ZXing, trying orientations. ZXing's PDF417/Aztec readers
+// beat the native detector, but are orientation-sensitive (a boarding pass held
+// in landscape is rotated 90deg), so we try each until one decodes.
+async function decodeStillWithZxing(bitmap: ImageBitmap): Promise<ScanHit[]> {
+  const { BrowserMultiFormatReader, ZXingFormat, hints } = await loadZxing();
+  const reader = new BrowserMultiFormatReader(hints);
+  for (const deg of [0, 90, 270, 180]) {
+    try {
+      const result = reader.decodeFromCanvas(rotateBitmapToCanvas(bitmap, deg));
+      return [
+        {
+          code: result.getText(),
+          format: ZXingFormat[result.getBarcodeFormat()].toLowerCase()
+        }
+      ];
+    } catch {
+      /* NotFoundException at this orientation; try the next */
+    }
+  }
+  return [];
+}
+
 async function startCamera(
   facingMode: 'environment' | 'user'
 ): Promise<{ stream: MediaStream; track: MediaStreamTrack }> {
@@ -194,12 +262,18 @@ export async function startScanner(
       const bitmap = await grabHiRes();
       if (!bitmap) return [];
       try {
-        const found = await detector.detect(bitmap);
-        return found
-          .filter((b) => b.rawValue)
-          .map((b) => ({ code: b.rawValue, format: b.format }));
-      } catch {
-        return [];
+        // Native detector first (fast). If it finds nothing, fall back to
+        // ZXing, which is much stronger on dense codes like PDF417.
+        try {
+          const found = await detector.detect(bitmap);
+          const hits = found
+            .filter((b) => b.rawValue)
+            .map((b) => ({ code: b.rawValue, format: b.format }));
+          if (hits.length) return hits;
+        } catch {
+          /* native detect failed on the still; fall through to ZXing */
+        }
+        return await decodeStillWithZxing(bitmap);
       } finally {
         bitmap.close();
       }
@@ -217,24 +291,8 @@ export async function startScanner(
     };
   }
 
-  // Fallback: load ZXing on demand and decode from the video element we own.
-  const [{ BrowserMultiFormatReader }, { DecodeHintType, BarcodeFormat: ZXingFormat }] =
-    await Promise.all([import('@zxing/browser'), import('@zxing/library')]);
-
-  const hints = new Map<number, unknown>([
-    [
-      DecodeHintType.POSSIBLE_FORMATS,
-      [
-        ZXingFormat.AZTEC, ZXingFormat.CODE_128, ZXingFormat.CODE_39,
-        ZXingFormat.CODE_93, ZXingFormat.CODABAR, ZXingFormat.DATA_MATRIX,
-        ZXingFormat.EAN_13, ZXingFormat.EAN_8, ZXingFormat.ITF,
-        ZXingFormat.PDF_417, ZXingFormat.QR_CODE, ZXingFormat.UPC_A,
-        ZXingFormat.UPC_E
-      ]
-    ],
-    [DecodeHintType.TRY_HARDER, true]
-  ]);
-
+  // Fallback engine: decode continuously from the video element we own.
+  const { BrowserMultiFormatReader, ZXingFormat, hints } = await loadZxing();
   const reader = new BrowserMultiFormatReader(hints, {
     delayBetweenScanAttempts: 150
   });
@@ -254,23 +312,7 @@ export async function startScanner(
     const bitmap = await grabHiRes();
     if (!bitmap) return [];
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return [];
-      ctx.drawImage(bitmap, 0, 0);
-      try {
-        const result = reader.decodeFromCanvas(canvas);
-        return [
-          {
-            code: result.getText(),
-            format: ZXingFormat[result.getBarcodeFormat()].toLowerCase()
-          }
-        ];
-      } catch {
-        return []; // ZXing throws NotFoundException when nothing decodes
-      }
+      return await decodeStillWithZxing(bitmap);
     } finally {
       bitmap.close();
     }
