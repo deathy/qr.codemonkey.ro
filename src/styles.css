@@ -175,6 +175,24 @@ button.active {
   font-size: 0.9rem;
   margin: 0;
 }
+.diagnostics {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.diagnostics summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
+.diagnostics pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-elev);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.72rem;
+  max-height: 300px;
+  overflow: auto;
+}
 .error {
   color: var(--danger);
   font-size: 0.9rem;

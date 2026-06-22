@@ -17,6 +17,19 @@ export interface ScanHit {
   format: string;
 }
 
+export interface CameraDiagnostics {
+  /** Selected camera label (e.g. "camera2 0, facing back"). */
+  label: string;
+  /** Live track settings (actual width/height/focusMode/etc). */
+  settings: MediaTrackSettings;
+  /** What the track says it supports. */
+  capabilities: MediaTrackCapabilities;
+  /** Outcome of our autofocus attempt — the key field for debugging focus. */
+  focusStatus: string;
+  /** All video input devices, so we can tell if a better camera exists. */
+  devices: { id: string; label: string }[];
+}
+
 export type EngineName = 'native' | 'zxing';
 
 export interface CameraController {
@@ -28,6 +41,8 @@ export interface CameraController {
   captureFrame(): Promise<Blob | null>;
   /** Focus the lens at a normalised (0..1) point in the frame. Best-effort. */
   focusAt(xNorm: number, yNorm: number): Promise<void>;
+  /** Snapshot of camera capabilities/settings for debugging focus issues. */
+  diagnostics(): Promise<CameraDiagnostics>;
   /**
    * Take a full-resolution still and decode it. For dense codes (PDF417,
    * Aztec) the soft live preview often won't resolve the fine structure; a
@@ -129,13 +144,19 @@ async function startCamera(
 // Default focus on Android is often left at a far/fixed distance, so a code
 // held close stays blurred. Request continuous autofocus when the camera
 // supports it. Best-effort: capability names are non-standard and vary.
-async function applyContinuousFocus(track: MediaStreamTrack): Promise<void> {
+// Returns a human-readable status used by the diagnostics readout.
+async function applyContinuousFocus(track: MediaStreamTrack): Promise<string> {
   const caps = track.getCapabilities?.();
-  if (!caps?.focusMode?.includes('continuous')) return;
+  if (!caps) return 'getCapabilities() unavailable';
+  if (!caps.focusMode) return 'device exposes no focusMode capability';
+  if (!caps.focusMode.includes('continuous')) {
+    return `no continuous mode (has: ${caps.focusMode.join(', ') || 'none'})`;
+  }
   try {
     await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-  } catch {
-    /* some devices reject focus constraints mid-stream; ignore */
+    return 'continuous focus applied';
+  } catch (err) {
+    return `applyConstraints failed: ${(err as Error)?.name ?? 'error'}`;
   }
 }
 
@@ -149,7 +170,7 @@ export async function startScanner(
   video.srcObject = stream;
   video.setAttribute('playsinline', 'true');
   await video.play();
-  await applyContinuousFocus(track);
+  let focusStatus = await applyContinuousFocus(track);
 
   const torchSupported = Boolean(track.getCapabilities?.().torch);
   const captureCanvas = document.createElement('canvas');
@@ -220,19 +241,43 @@ export async function startScanner(
     }
     if (caps?.focusMode?.includes('single-shot')) advanced.push({ focusMode: 'single-shot' });
     else if (caps?.focusMode?.includes('continuous')) advanced.push({ focusMode: 'continuous' });
-    if (!advanced.length) return;
+    if (!advanced.length) {
+      focusStatus = 'tap: no focusMode/pointsOfInterest capability';
+      return;
+    }
     try {
       await track.applyConstraints({ advanced });
-    } catch {
-      /* best-effort; ignore rejected focus constraints */
+      focusStatus = `tap focus applied (${advanced.length} constraint(s))`;
+    } catch (err) {
+      focusStatus = `tap applyConstraints failed: ${(err as Error)?.name ?? 'error'}`;
     }
+  }
+
+  async function diagnostics(): Promise<CameraDiagnostics> {
+    let devices: { id: string; label: string }[] = [];
+    try {
+      const list = await navigator.mediaDevices.enumerateDevices();
+      devices = list
+        .filter((d) => d.kind === 'videoinput')
+        .map((d) => ({ id: d.deviceId, label: d.label || '(label hidden)' }));
+    } catch {
+      /* enumeration may be blocked; leave empty */
+    }
+    return {
+      label: track.label,
+      settings: track.getSettings?.() ?? {},
+      capabilities: track.getCapabilities?.() ?? {},
+      focusStatus,
+      devices
+    };
   }
 
   const base = {
     hasTorch: () => torchSupported,
     setTorch,
     captureFrame,
-    focusAt
+    focusAt,
+    diagnostics
   };
 
   if (window.BarcodeDetector && !forceZxing) {

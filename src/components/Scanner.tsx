@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { startScanner, type CameraController, type ScanHit, type EngineName } from '../lib/scanner';
+import {
+  startScanner,
+  type CameraController,
+  type ScanHit,
+  type EngineName,
+  type CameraDiagnostics
+} from '../lib/scanner';
 import type { Settings } from '../lib/types';
 
 interface Props {
@@ -21,6 +27,7 @@ export function Scanner({ settings, active, onScan }: Props) {
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [captureMsg, setCaptureMsg] = useState<string | null>(null);
+  const [diag, setDiag] = useState<CameraDiagnostics | null>(null);
   const focusTimer = useRef<number | undefined>(undefined);
   const msgTimer = useRef<number | undefined>(undefined);
 
@@ -81,6 +88,12 @@ export function Scanner({ settings, active, onScan }: Props) {
     focusTimer.current = window.setTimeout(() => setFocusPoint(null), 800);
     const clamp = (n: number) => Math.max(0, Math.min(1, n));
     void ctrl.focusAt(clamp(xNorm), clamp(yNorm));
+  }
+
+  async function loadDiagnostics() {
+    const ctrl = controllerRef.current;
+    if (!ctrl) return;
+    setDiag(await ctrl.diagnostics());
   }
 
   async function handleCapture() {
@@ -151,6 +164,23 @@ export function Scanner({ settings, active, onScan }: Props) {
             For dense codes (boarding passes, Aztec), hold steady and tap <b>Capture</b> to
             decode a sharp full-resolution photo.
           </p>
+
+          <details class="diagnostics" onToggle={(ev) => {
+            if ((ev.currentTarget as HTMLDetailsElement).open) void loadDiagnostics();
+          }}>
+            <summary>Camera diagnostics</summary>
+            <button onClick={loadDiagnostics}>Refresh</button>
+            {diag && (
+              <pre>
+{`label: ${diag.label || '(hidden)'}
+focusStatus: ${diag.focusStatus}
+settings: ${JSON.stringify(diag.settings, null, 2)}
+capabilities: ${JSON.stringify(diag.capabilities, null, 2)}
+videoDevices:
+${diag.devices.map((d) => `  - ${d.label}`).join('\n') || '  (none / labels hidden)'}`}
+              </pre>
+            )}
+          </details>
         </>
       )}
     </div>
