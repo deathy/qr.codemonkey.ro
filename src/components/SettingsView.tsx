@@ -57,6 +57,13 @@ export function SettingsView({ settings, onChange }: Props) {
         onChange={(v) => onChange({ torch: v })}
       />
 
+      <Toggle
+        label="Always use ZXing engine"
+        hint="Skip the device's native detector and always decode with ZXing. Slower and heavier on the battery, but stronger on dense codes (PDF417/Aztec). Mainly for testing."
+        checked={settings.forceZxing}
+        onChange={(v) => onChange({ forceZxing: v })}
+      />
+
       <label class="setting">
         <div class="setting-text">
           <span class="setting-label">Camera</span>

@@ -36,6 +36,8 @@ export interface Settings {
   facingMode: 'environment' | 'user';
   /** Keep the torch (flashlight) on while scanning, if supported. */
   torch: boolean;
+  /** Force the ZXing engine even when the native detector is available. */
+  forceZxing: boolean;
 }
 
 export const EXPORT_VERSION = 1;

@@ -142,7 +142,8 @@ async function applyContinuousFocus(track: MediaStreamTrack): Promise<void> {
 export async function startScanner(
   video: HTMLVideoElement,
   facingMode: 'environment' | 'user',
-  onHit: (hit: ScanHit) => void
+  onHit: (hit: ScanHit) => void,
+  forceZxing = false
 ): Promise<CameraController> {
   const { stream, track } = await startCamera(facingMode);
   video.srcObject = stream;
@@ -234,7 +235,7 @@ export async function startScanner(
     focusAt
   };
 
-  if (window.BarcodeDetector) {
+  if (window.BarcodeDetector && !forceZxing) {
     const supported = await BarcodeDetector.getSupportedFormats();
     const formats = NATIVE_FORMATS.filter((f) => supported.includes(f));
     const detector = new window.BarcodeDetector(

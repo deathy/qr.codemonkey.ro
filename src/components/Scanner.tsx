@@ -34,10 +34,15 @@ export function Scanner({ settings, active, onScan }: Props) {
     const video = videoRef.current;
     if (!video) return;
 
-    startScanner(video, settings.facingMode, (hit) => {
-      const ctrl = controllerRef.current;
-      onScanRef.current(hit, () => (ctrl ? ctrl.captureFrame() : Promise.resolve(null)));
-    })
+    startScanner(
+      video,
+      settings.facingMode,
+      (hit) => {
+        const ctrl = controllerRef.current;
+        onScanRef.current(hit, () => (ctrl ? ctrl.captureFrame() : Promise.resolve(null)));
+      },
+      settings.forceZxing
+    )
       .then((ctrl) => {
         if (cancelled) {
           ctrl.stop();
@@ -58,7 +63,7 @@ export function Scanner({ settings, active, onScan }: Props) {
       controllerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, settings.facingMode]);
+  }, [active, settings.facingMode, settings.forceZxing]);
 
   // Apply torch changes without restarting the camera.
   useEffect(() => {

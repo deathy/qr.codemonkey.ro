@@ -7,7 +7,8 @@ export const DEFAULT_SETTINGS: Settings = {
   saveImage: false,
   cooldownMs: 1500,
   facingMode: 'environment',
-  torch: false
+  torch: false,
+  forceZxing: false
 };
 
 export function loadSettings(): Settings {
