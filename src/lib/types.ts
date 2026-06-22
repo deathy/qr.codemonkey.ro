@@ -32,8 +32,10 @@ export interface Settings {
   saveImage: boolean;
   /** Suppress re-logging the same payload for this many ms. */
   cooldownMs: number;
-  /** Preferred camera. 'environment' = rear (default). */
+  /** Preferred camera. 'environment' = rear (default). Fallback when no cameraId. */
   facingMode: 'environment' | 'user';
+  /** Explicit camera deviceId, or null to auto-pick the main rear camera. */
+  cameraId: string | null;
   /** Keep the torch (flashlight) on while scanning, if supported. */
   torch: boolean;
   /** Force the ZXing engine even when the native detector is available. */

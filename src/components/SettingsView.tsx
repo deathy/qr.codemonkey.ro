@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'preact/hooks';
 import type { Settings } from '../lib/types';
 
 interface Props {
@@ -32,6 +33,23 @@ function Toggle({
 }
 
 export function SettingsView({ settings, onChange }: Props) {
+  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
+
+  useEffect(() => {
+    navigator.mediaDevices
+      ?.enumerateDevices?.()
+      .then((list) =>
+        setCameras(
+          list
+            .filter((d) => d.kind === 'videoinput')
+            .map((d, i) => ({ id: d.deviceId, label: d.label || `Camera ${i + 1}` }))
+        )
+      )
+      .catch(() => {
+        /* enumeration blocked; just show Auto */
+      });
+  }, []);
+
   return (
     <div class="settings-view">
       <h2>Settings</h2>
@@ -67,16 +85,22 @@ export function SettingsView({ settings, onChange }: Props) {
       <label class="setting">
         <div class="setting-text">
           <span class="setting-label">Camera</span>
-          <span class="setting-hint">Rear is best for scanning while you watch the screen.</span>
+          <span class="setting-hint">
+            Auto picks the main rear camera (the one with autofocus). Pick a specific
+            camera here if Auto chooses a fixed-focus lens that won't focus up close.
+          </span>
         </div>
         <select
-          value={settings.facingMode}
-          onChange={(ev) =>
-            onChange({ facingMode: (ev.target as HTMLSelectElement).value as Settings['facingMode'] })
-          }
+          value={settings.cameraId ?? ''}
+          onChange={(ev) => {
+            const v = (ev.target as HTMLSelectElement).value;
+            onChange({ cameraId: v || null });
+          }}
         >
-          <option value="environment">Rear</option>
-          <option value="user">Front</option>
+          <option value="">Auto (main rear)</option>
+          {cameras.map((c) => (
+            <option value={c.id}>{c.label}</option>
+          ))}
         </select>
       </label>
 

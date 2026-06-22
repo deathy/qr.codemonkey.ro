@@ -124,21 +124,63 @@ async function decodeStillWithZxing(bitmap: ImageBitmap): Promise<ScanHit[]> {
   return [];
 }
 
+// Android exposes several rear cameras; only the main one (index 0) has real
+// autofocus — the ultrawide/secondary ones are often manual/fixed focus, which
+// is exactly what leaves close codes blurry. Pull the camera number out of the
+// label so we can prefer the lowest-indexed rear camera.
+function cameraIndex(label: string): number {
+  const m = label.match(/camera\s*(\d+)/i);
+  return m ? Number(m[1]) : 99;
+}
+
+async function pickMainRearCamera(): Promise<string | undefined> {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const rear = devices.filter(
+      (d) => d.kind === 'videoinput' && d.label && /back|rear|environment/i.test(d.label)
+    );
+    if (!rear.length) return undefined;
+    rear.sort((a, b) => cameraIndex(a.label) - cameraIndex(b.label));
+    return rear[0].deviceId;
+  } catch {
+    return undefined; // labels hidden until permission granted; caller falls back
+  }
+}
+
 async function startCamera(
-  facingMode: 'environment' | 'user'
+  facingMode: 'environment' | 'user',
+  cameraId: string | null
 ): Promise<{ stream: MediaStream; track: MediaStreamTrack }> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: { ideal: facingMode },
-      // Ask for 1080p: encourages the main (autofocus) rear camera over a
-      // fixed-focus ultrawide, and gives sharper detail for small barcodes.
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
-    },
-    audio: false
-  });
-  const track = stream.getVideoTracks()[0];
-  return { stream, track };
+  // 1080p hint gives sharper detail for small barcodes.
+  const resolution = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+  const open = async (extra: MediaTrackConstraints) => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { ...extra, ...resolution },
+      audio: false
+    });
+    return { stream, track: stream.getVideoTracks()[0] };
+  };
+
+  // Explicit user choice wins.
+  if (cameraId) {
+    try {
+      return await open({ deviceId: { exact: cameraId } });
+    } catch {
+      /* chosen camera unavailable; fall through to auto */
+    }
+  }
+  // Otherwise prefer the main rear camera (the one with autofocus).
+  const main = await pickMainRearCamera();
+  if (main) {
+    try {
+      return await open({ deviceId: { exact: main } });
+    } catch {
+      /* fall through to facingMode */
+    }
+  }
+  // First run (no labels yet) / no rear match: plain facingMode, which also
+  // triggers the permission prompt.
+  return open({ facingMode: { ideal: facingMode } });
 }
 
 // Default focus on Android is often left at a far/fixed distance, so a code
@@ -164,9 +206,10 @@ export async function startScanner(
   video: HTMLVideoElement,
   facingMode: 'environment' | 'user',
   onHit: (hit: ScanHit) => void,
-  forceZxing = false
+  forceZxing = false,
+  cameraId: string | null = null
 ): Promise<CameraController> {
-  const { stream, track } = await startCamera(facingMode);
+  const { stream, track } = await startCamera(facingMode, cameraId);
   video.srcObject = stream;
   video.setAttribute('playsinline', 'true');
   await video.play();

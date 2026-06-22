@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: Settings = {
   saveImage: false,
   cooldownMs: 1500,
   facingMode: 'environment',
+  cameraId: null,
   torch: false,
   forceZxing: false
 };
