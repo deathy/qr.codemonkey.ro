@@ -2,10 +2,10 @@
 
 Phased, so the app is useful early and stays focused. Checkboxes track the MVP.
 
-## Phase 1 — MVP (current)
+## Phase 1 — MVP (shipped)
 
-- [x] Hybrid scanning engine (native `BarcodeDetector` + ZXing fallback)
-- [x] Continuous scanning with per-payload re-scan cooldown
+- [x] Hybrid scanning engine (native `BarcodeDetector` + lazy ZXing fallback)
+- [x] Continuous scanning with per-payload re-scan cooldown (default 2s)
 - [x] Local timestamped history (IndexedDB)
 - [x] Per-entry notes; delete; clear all
 - [x] Content classification (URL / email / phone / Wi-Fi / geo / contact / text)
@@ -14,9 +14,17 @@ Phased, so the app is useful early and stays focused. Checkboxes track the MVP.
 - [x] Optional camera-frame capture (off by default)
 - [x] JSON export (self-contained, images inlined)
 - [x] PWA: installable + offline
-- [ ] Validate decode accuracy on real test sheets (S24 / Chrome), esp. PDF417 & Aztec
+- [x] Validate decode on real test sheets (S24 / Chrome) — PDF417 boarding pass works
+      once focus is fixed; native is weak on PDF417, so Capture routes via ZXing
+- [x] Camera picker + auto-select the main rear (autofocus) camera (see D10)
+- [x] Tap-to-focus; continuous AF; torch toggle
+- [x] **Capture** full-res still decode for dense codes (ZXing + rotation sweep)
+- [x] Camera diagnostics panel (label / capabilities / focus status / devices)
+- [x] Scan sound (optional) + feedback decoupled from the save path
+- [x] Build version stamp (commit hash) in Settings
+- [x] Exact dependency pinning + Dependabot; security/permissions headers
+- [x] Deployed on Cloudflare Workers (static assets) at qr.codemonkey.ro (see D9)
 - [ ] Replace SVG app icon with proper PNG icons (192 / 512 / maskable)
-- [ ] Deploy to Cloudflare Pages on qr.codemonkey.ro
 
 ## Phase 2 — Quality of life
 
@@ -24,9 +32,10 @@ Phased, so the app is useful early and stays focused. Checkboxes track the MVP.
 - [ ] Richer parsing for structured payloads (Wi-Fi → "join" details, geo → map,
       vCard/meCard → contact fields, mailto/tel → actions)
 - [ ] Boarding-pass (IATA BCBP) decode from PDF417 into a readable itinerary
-- [ ] Scan confirmation polish (sound option, success animation, haptics already on)
-- [ ] Tap-to-focus / pinch-to-zoom controls in the viewport
+- [ ] Pinch-to-zoom in the viewport (tap-to-focus, sound, haptics already done)
 - [ ] Storage usage indicator + prune controls
+- [ ] Consider running continuous ZXing in a Web Worker (if "Always use ZXing"
+      becomes a real workload — keeps decoding off the main thread)
 
 ## Phase 3 — Beyond
 

@@ -12,9 +12,11 @@ features, not incidentals.
 
 ## D1 — Pure static, no backend
 
-- **Decision:** Pure static HTML/CSS/JS, deployed to Cloudflare Pages.
+- **Decision:** Pure static HTML/CSS/JS, no server-side code.
 - **Why:** No server means nothing to hack, nothing to host long-term, no data
-  custody. Camera/GPS already require HTTPS, which Pages provides for free.
+  custody. Camera/GPS already require HTTPS, which the host provides for free.
+- **Update:** Originally intended for Cloudflare Pages; we ended up on Cloudflare
+  **Workers static assets** instead — see [D9](#d9--deployment-cloudflare-workers-static-assets).
 
 ## D2 — Scanning engine: native `BarcodeDetector` first, ZXing fallback
 
@@ -27,10 +29,14 @@ features, not incidentals.
   Aztec — exactly what boarding passes need. ZXing handles them. ZXing is also
   Apache-2.0, matching our license cleanly.
 - **Consequence:** We own the `MediaStream` ourselves (not delegated to ZXing) so
-  torch control and frame capture behave identically on both paths.
-- **Open risk:** Real-world `BarcodeDetector` accuracy on trickier formats
-  (PDF417 boarding pass, Aztec, Data Matrix) on the S24 is unverified — validate
-  with the physical test sheets before relying on it.
+  torch control and frame capture behave identically on both paths. ZXing is
+  lazy-loaded (dynamic import) so the native path never downloads it.
+- **Resolved (was an open risk):** On the S24, native `BarcodeDetector` handles QR
+  and 1D (EAN/UPC/Code128) well, but is **weak on PDF417** even from a sharp image.
+  Two things fixed boarding passes: (a) fixing focus — see [D10](#d10--camera-selection-prefer-the-main-rear-autofocus-camera)
+  — and (b) the **Capture** still-decode path that routes through ZXing across
+  rotations — see [D11](#d11--capture-button-for-dense-codes). The biggest real-world
+  blocker turned out to be *focus*, not the decoder.
 
 ## D3 — Frontend: Preact + Vite + TypeScript
 
@@ -77,3 +83,79 @@ features, not incidentals.
 
 - **Decision:** Apache-2.0.
 - **Why:** Author preference; includes a patent grant; matches ZXing's license.
+
+## D9 — Deployment: Cloudflare Workers (static assets)
+
+- **Decision:** Deploy as a **Workers static-assets** project via Cloudflare's
+  Git-connected builds, configured by an explicit `wrangler.jsonc` (assets dir
+  `./dist`, SPA fallback). Build = `npm run build`, deploy = `npx wrangler deploy`.
+- **Why (and the saga):** We intended Cloudflare Pages, but the dashboard's "import
+  a Git repo" flow now creates **Workers Builds**, not Pages. That flow auto-detects
+  Vite and **injects `@cloudflare/vite-plugin`**, which imports `node:module`'s
+  `registerHooks` (Node ≥ 22.15 only) and exploded the build on Node 20. A static SPA
+  needs none of that. Providing an explicit `wrangler.jsonc` stops the auto-config from
+  guessing, so the build is just our plain Vite build serving `dist`.
+- **Constraints learned the hard way:**
+  - Cloudflare's build auto-config **rejects Vite < 6** → we upgraded Vite 5 → 6.
+  - Build-time Node pinned to **22** via `.nvmrc`.
+  - The `wrangler.jsonc` `name` **must match** the Worker Cloudflare created from the
+    repo (`qr-codemonkey-ro`), or the CI warns and opens a fixup PR.
+- **Headers:** `public/_headers` sets `Permissions-Policy: camera=(self),
+  geolocation=(self)` (required for the features) plus `no-referrer`, `nosniff`,
+  `X-Frame-Options: DENY`.
+
+## D10 — Camera selection: prefer the main rear (autofocus) camera
+
+- **Decision:** Don't rely on `facingMode: environment`. Enumerate video inputs and
+  pick the **lowest-indexed rear camera** ("camera 0, facing back" = the main lens),
+  with a user-overridable picker in Settings and a persisted `cameraId`.
+- **Why (the biggest single lesson):** On the S24, `facingMode: environment` selected
+  **"camera 2, facing back"**, whose only `focusMode` capability is `["manual"]` —
+  locked at infinity. That made everything close blurry and made continuous-AF and
+  tap-to-focus no-ops, which looked like decoder failures but wasn't. The main camera
+  (index 0) has real autofocus; once selected, native scanning (including PDF417)
+  works. Camera **0** is conventionally the primary rear lens on Android.
+- **Supporting bits:** continuous AF + tap-to-focus (`pointsOfInterest` / single-shot)
+  applied when supported; 1080p requested for sharper small codes; a **Camera
+  diagnostics** panel in the Scan view exposes the selected label, capabilities,
+  focus status, and device list — invaluable for debugging this remotely.
+
+## D11 — Capture button for dense codes
+
+- **Decision:** A manual **Capture** shutter grabs a full-resolution still via
+  `ImageCapture.takePhoto()` (autofocused, sensor-res; falls back to `grabFrame`, then
+  the video frame) and decodes it with **ZXing, trying 0/90/270/180°**.
+- **Why:** The live preview is too soft for PDF417/Aztec; a crisp still decodes
+  reliably. ZXing's PDF417/Aztec readers beat the native detector but are
+  orientation-sensitive, hence the rotation sweep. Native `scanStill` tries the native
+  detector first, then falls back to ZXing.
+
+## D12 — Scan feedback is decoupled from persistence
+
+- **Decision:** The instant a scan is accepted, fire **vibrate + sound + toast**
+  synchronously; then persist (GPS fix, optional frame, IndexedDB write) in the
+  background via `recordScan`.
+- **Why:** Originally feedback was interleaved with the save — the toast came *after*
+  `await getLocation()`. With GPS always on, a slow fix meant you'd feel the vibration
+  but see no toast, even though the scan did save. Feedback must never wait on the
+  (variable-latency) save path.
+- **Related:** Default re-scan cooldown is **2s**. Scan **sound** is a tiny
+  synthesized Web Audio blip (no asset), default on, toggleable, unlocked on first
+  user gesture (autoplay policy).
+
+## D13 — Dependencies pinned exact + Dependabot
+
+- **Decision:** All direct deps pinned to **exact versions** (no `^`); `.npmrc`
+  `save-exact=true`; committed lockfile; builds use `npm ci`. Dependabot opens
+  **weekly PRs** (minor/patch grouped, majors individual) — opt-in, never auto-merged.
+- **Why:** Reproducible deploys with no ambient drift. The lockfile is the real
+  guarantee (it pins transitive deps too); exact `package.json` + `.npmrc` prevent
+  accidental widening. Updates become a deliberate, reviewable act.
+
+## D14 — Build version stamp
+
+- **Decision:** Inject the short commit SHA + build time (Vite `define`, from
+  Cloudflare's CI env var with a git fallback) and show them at the bottom of Settings,
+  linked to the GitHub commit.
+- **Why:** The PWA service worker caches aggressively; the stamp makes it trivial to
+  confirm whether the deployed version is current after an update.
