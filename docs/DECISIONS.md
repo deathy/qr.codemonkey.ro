@@ -57,8 +57,12 @@ features, not incidentals.
 
 - **Decision:** `vite-plugin-pwa` with an autoUpdate service worker and a web
   manifest, installable to the home screen, offline-capable.
-- **Why:** Directly answers the "feels native, isn't a native app" goal. The icon
-  is currently an inline SVG; swap in PNG icons before a public launch.
+- **Why:** Directly answers the "feels native, isn't a native app" goal.
+- **Icon:** The app icon **is a QR code that points to `https://qr.codemonkey.ro`** —
+  self-referential and literally true (scan the icon → open the app). Generated from
+  the URL via `npm run icons` (`scripts/generate-icons.mjs`, dark modules on white for
+  universal scannability): `favicon.svg` + PNG `icon-192/512` (any) + `icon-maskable-512`
+  (extra quiet zone so masking can't clip a finder pattern).
 
 ## D6 — Data model & export
 
@@ -96,7 +100,8 @@ features, not incidentals.
   needs none of that. Providing an explicit `wrangler.jsonc` stops the auto-config from
   guessing, so the build is just our plain Vite build serving `dist`.
 - **Constraints learned the hard way:**
-  - Cloudflare's build auto-config **rejects Vite < 6** → we upgraded Vite 5 → 6.
+  - Cloudflare's build auto-config **rejects Vite < 6** → we upgraded Vite 5 → 6
+    (and later 6 → **8** to stay on a supported major; ≥ 6 remains the hard floor).
   - Build-time Node pinned to **22** via `.nvmrc`.
   - The `wrangler.jsonc` `name` **must match** the Worker Cloudflare created from the
     repo (`qr-codemonkey-ro`), or the CI warns and opens a fixup PR.
@@ -151,6 +156,14 @@ features, not incidentals.
 - **Why:** Reproducible deploys with no ambient drift. The lockfile is the real
   guarantee (it pins transitive deps too); exact `package.json` + `.npmrc` prevent
   accidental widening. Updates become a deliberate, reviewable act.
+- **Lessons from the first update batch:**
+  - **Verify with `npm ci`, not `npm install`.** Cloudflare uses `npm ci`, which fails
+    hard on peer-dep conflicts that a local `npm install` silently papers over.
+  - **Grouped PRs can produce invalid combos.** Dependabot's minor/patch group bumped
+    `@zxing/library` to 0.23.0 while `@zxing/browser@0.2.0` peer-requires `^0.22.0` —
+    `npm ci` rejected it. Fix was to pin the library to the compatible 0.22.0.
+  - **Merge majors one at a time and verify on-device between each** (especially
+    anything touching scanning or the service worker), rather than in a batch.
 
 ## D14 — Build version stamp
 

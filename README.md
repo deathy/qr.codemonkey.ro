@@ -70,7 +70,7 @@ Workers builds), configured by [`wrangler.jsonc`](wrangler.jsonc):
 - Build command: `npm run build` → output `dist/`
 - Deploy command: `npx wrangler deploy` (serves `dist` as static assets, SPA fallback)
 - Node pinned to 22 via [`.nvmrc`](.nvmrc); Vite must be ≥ 6 (Cloudflare's build
-  auto-config rejects older Vite).
+  auto-config rejects older Vite) — currently on Vite 8.
 
 Every push to `main` auto-deploys; `qr.codemonkey.ro` is bound as a custom domain.
 HTTPS is automatic. Security/permissions headers live in [`public/_headers`](public/_headers).
