@@ -1,4 +1,6 @@
-# QR & Barcode Scanner — qr.codemonkey.ro
+# QR & Barcode Scanner — [qr.codemonkey.ro](https://qr.codemonkey.ro)
+
+**▶ Live app: [qr.codemonkey.ro](https://qr.codemonkey.ro)** — open it on your phone and add it to your home screen.
 
 A privacy-first QR and barcode scanner that runs entirely in your browser.
 

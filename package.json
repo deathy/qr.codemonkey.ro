@@ -3,6 +3,26 @@
   "version": "0.1.0",
   "description": "Privacy-first QR & barcode scanner. Pure static web app, nothing leaves your device.",
   "license": "Apache-2.0",
+  "author": "Cristian Vat",
+  "homepage": "https://qr.codemonkey.ro",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deathy/qr.codemonkey.ro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/deathy/qr.codemonkey.ro/issues"
+  },
+  "keywords": [
+    "qr-code",
+    "barcode",
+    "scanner",
+    "barcode-scanner",
+    "pwa",
+    "privacy",
+    "preact",
+    "zxing",
+    "web-app"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite",
