@@ -172,3 +172,24 @@ features, not incidentals.
   linked to the GitHub commit.
 - **Why:** The PWA service worker caches aggressively; the stamp makes it trivial to
   confirm whether the deployed version is current after an update.
+
+## D15 — Structured payload parsing
+
+- **Decision:** Parse known payload types into typed objects and render a per-type
+  card with the **one or two actions that actually make sense**, always explicit.
+  Covered: Wi-Fi, contact (vCard/MeCard), geo, email, phone, SMS, calendar (vEvent),
+  boarding pass (IATA BCBP), SEPA (EPC), and `otpauth` (2FA). Logic lives in
+  `src/lib/parse.ts` as **pure functions**, unit-tested with Vitest.
+- **Generic URLs deliberately excluded:** we keep showing the raw URL + copy (and the
+  existing explicit "Open link"). A URL "safety" view (punycode/homograph flags etc.)
+  is high-effort and risks giving false confidence — not worth it.
+- **Real actions, still no backend:** "Add to contacts" / "Add to calendar" generate a
+  `.vcf` / `.ics` **locally** and hand it to the OS via a download — native-feeling,
+  zero server. Maps/email/phone/SMS use standard URI schemes (explicit tap).
+  Wi-Fi can't be joined from the web, so we present + copy the credentials instead.
+- **Sensitive fields masked:** Wi-Fi passwords and OTP secrets are hidden behind a
+  reveal toggle; SEPA shows a "verify before paying" note. Crypto/payment-initiation
+  payloads are intentionally not supported.
+- **Test hygiene:** parser tests use only fictional/public data — made-up names,
+  reserved `555` numbers, `example.com`, the canonical public example IBAN, the RFC
+  OTP test secret; real airport codes are fine (public).

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { ScanEntry } from '../lib/types';
-import { classify, formatLabel } from '../lib/content';
+import { formatLabel } from '../lib/content';
+import { parsePayload, kindLabel } from '../lib/parse';
+import { ParsedBody, ParsedActions } from './ParsedCard';
 import { getImage } from '../lib/db';
 
 interface Props {
@@ -49,7 +51,7 @@ function EntryRow({
   onDelete: (id: string) => void;
   onNote: (id: string, note: string) => void;
 }) {
-  const c = classify(entry.code);
+  const parsed = parsePayload(entry.code);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(entry.note ?? '');
   const [copied, setCopied] = useState(false);
@@ -84,13 +86,13 @@ function EntryRow({
   return (
     <li class="entry">
       <div class="entry-head">
-        <span class={`badge kind-${c.kind}`}>{c.label}</span>
+        <span class={`badge kind-${parsed.kind}`}>{kindLabel(parsed.kind)}</span>
         <span class="format">{formatLabel(entry.format)}</span>
         <span class="spacer" />
         <time>{new Date(entry.timestamp).toLocaleString()}</time>
       </div>
 
-      <div class="entry-code">{entry.code}</div>
+      <ParsedBody parsed={parsed} />
 
       {imgUrl && <img class="entry-img" src={imgUrl} alt="Captured frame" loading="lazy" />}
 
@@ -128,11 +130,12 @@ function EntryRow({
 
       <div class="entry-actions">
         <button onClick={copy}>{copied ? 'Copied ✓' : 'Copy'}</button>
-        {c.kind === 'url' && (
+        {parsed.kind === 'url' && (
           <a class="btn" href={entry.code} target="_blank" rel="noopener noreferrer">
             Open link ↗
           </a>
         )}
+        <ParsedActions parsed={parsed} />
         {!editing && (
           <button onClick={() => setEditing(true)}>{entry.note ? 'Edit note' : 'Add note'}</button>
         )}

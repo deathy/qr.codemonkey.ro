@@ -252,9 +252,17 @@ button.active {
   color: var(--accent);
 }
 .kind-wifi,
-.kind-geo {
+.kind-geo,
+.kind-contact,
+.kind-calendar {
   background: #14532d;
   color: var(--ok);
+}
+.kind-sepa,
+.kind-otp,
+.kind-boardingpass {
+  background: #422006;
+  color: #fbbf24;
 }
 .format {
   color: var(--text-dim);
@@ -266,6 +274,55 @@ button.active {
   background: var(--bg);
   border-radius: 8px;
   padding: 8px;
+}
+.parsed {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.field {
+  display: flex;
+  gap: 8px;
+  font-size: 0.9rem;
+  align-items: baseline;
+}
+.field-label {
+  flex: 0 0 84px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.field-value {
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+.field-value a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.secret {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.secret code {
+  font-family: ui-monospace, Consolas, monospace;
+}
+.link-btn {
+  border: none;
+  background: none;
+  color: var(--accent);
+  padding: 0;
+  font-size: 0.8rem;
+}
+.parsed-warn {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: #fbbf24;
 }
 .entry-img {
   max-width: 160px;

@@ -29,10 +29,11 @@ Phased, so the app is useful early and stays focused. Checkboxes track the MVP.
 
 ## Phase 2 — Quality of life
 
+- [x] Structured payload parsing → typed cards + explicit actions (see D15):
+      Wi-Fi, contact (→ `.vcf`), geo, email/phone/SMS, calendar (→ `.ics`),
+      boarding pass (IATA BCBP), SEPA (EPC), otpauth. Generic URLs left as raw text.
+- [x] Boarding-pass (IATA BCBP) decode into a readable itinerary (part of the above)
 - [ ] Search / filter history (by text, format, date)
-- [ ] Richer parsing for structured payloads (Wi-Fi → "join" details, geo → map,
-      vCard/meCard → contact fields, mailto/tel → actions)
-- [ ] Boarding-pass (IATA BCBP) decode from PDF417 into a readable itinerary
 - [ ] Pinch-to-zoom in the viewport (tap-to-focus, sound, haptics already done)
 - [ ] Storage usage indicator + prune controls
 - [ ] Consider running continuous ZXing in a Web Worker (if "Always use ZXing"
