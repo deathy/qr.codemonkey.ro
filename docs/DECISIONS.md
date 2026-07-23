@@ -178,8 +178,8 @@ features, not incidentals.
 - **Decision:** Parse known payload types into typed objects and render a per-type
   card with the **one or two actions that actually make sense**, always explicit.
   Covered: Wi-Fi, contact (vCard/MeCard), geo, email, phone, SMS, calendar (vEvent),
-  boarding pass (IATA BCBP), SEPA (EPC), and `otpauth` (2FA). Logic lives in
-  `src/lib/parse.ts` as **pure functions**, unit-tested with Vitest.
+  boarding pass (IATA BCBP), SEPA (EPC), Swiss QR-bill (SPC), and `otpauth` (2FA).
+  Logic lives in `src/lib/parse.ts` as **pure functions**, unit-tested with Vitest.
 - **Generic URLs deliberately excluded:** we keep showing the raw URL + copy (and the
   existing explicit "Open link"). A URL "safety" view (punycode/homograph flags etc.)
   is high-effort and risks giving false confidence — not worth it.

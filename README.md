@@ -29,8 +29,8 @@ it doesn't need.
 - Local, timestamped history of every scan; add notes, delete entries.
 - **Understands structured codes** — Wi-Fi, contacts (save as `.vcf`), locations,
   calendar events (save as `.ics`), email/phone/SMS, boarding passes (IATA BCBP),
-  SEPA payments, and 2FA/OTP setup — each shown as a readable card with the right
-  action. Sensitive fields (Wi-Fi password, 2FA secret) are masked behind a tap.
+  SEPA (EPC) and Swiss QR-bill payments, and 2FA/OTP setup — each shown as a readable
+  card with the right action. Sensitive fields (Wi-Fi password, 2FA secret) are masked.
 - Content-aware actions — links are shown in full and **never opened automatically**;
   generic URLs are deliberately kept as plain text (no risky auto-handling).
 - Optional **GPS location** capture per scan (off by default).

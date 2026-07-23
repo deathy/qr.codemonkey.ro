@@ -259,6 +259,7 @@ button.active {
   color: var(--ok);
 }
 .kind-sepa,
+.kind-swissqr,
 .kind-otp,
 .kind-boardingpass {
   background: #422006;

@@ -31,7 +31,8 @@ Phased, so the app is useful early and stays focused. Checkboxes track the MVP.
 
 - [x] Structured payload parsing → typed cards + explicit actions (see D15):
       Wi-Fi, contact (→ `.vcf`), geo, email/phone/SMS, calendar (→ `.ics`),
-      boarding pass (IATA BCBP), SEPA (EPC), otpauth. Generic URLs left as raw text.
+      boarding pass (IATA BCBP), SEPA (EPC), Swiss QR-bill (SPC), otpauth.
+      Generic URLs left as raw text.
 - [x] Boarding-pass (IATA BCBP) decode into a readable itinerary (part of the above)
 - [ ] Search / filter history (by text, format, date)
 - [ ] Pinch-to-zoom in the viewport (tap-to-focus, sound, haptics already done)
