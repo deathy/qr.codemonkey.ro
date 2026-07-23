@@ -195,6 +195,160 @@ describe('OTP (otpauth)', () => {
   });
 });
 
+describe('Swiss QR Bill (SPC)', () => {
+  it('parses structured address (type S) with all fields', () => {
+    // Based on the SIX Group specimen with fictional data
+    const spc = [
+      'SPC',           // 0: header
+      '0200',          // 1: version
+      '1',             // 2: coding (UTF-8)
+      'CH6431960000442155 7', // 3: IBAN (fictional, spaces for readability)
+      'S',             // 4: creditor address type
+      'Max Muster & Soehne',  // 5: creditor name
+      'Musterstrasse',  // 6: creditor street
+      '123',           // 7: creditor building number
+      '8000',          // 8: creditor postal code
+      'Seldwyla',      // 9: creditor city
+      'CH',            // 10: creditor country
+      '',              // 11: ultimate creditor type (empty)
+      '',              // 12: ultimate creditor name
+      '',              // 13: ultimate creditor street
+      '',              // 14: ultimate creditor building
+      '',              // 15: ultimate creditor postal code
+      '',              // 16: ultimate creditor city
+      '',              // 17: ultimate creditor country
+      '50.00',         // 18: amount
+      'CHF',           // 19: currency
+      'S',             // 20: debtor address type
+      'Simon Muster',  // 21: debtor name
+      'Musterstrasse', // 22: debtor street
+      '1',             // 23: debtor building
+      '8000',          // 24: debtor postal code
+      'Seldwyla',      // 25: debtor city
+      'CH',            // 26: debtor country
+      'QRR',           // 27: reference type
+      '000008207791225857421286694', // 28: reference
+      'Payment of travel', // 29: unstructured message
+      'EPD'            // 30: trailer
+    ].join('\n');
+    const p = parsePayload(spc);
+    expect(p.kind).toBe('swissqr');
+    if (p.kind !== 'swissqr') return;
+    expect(p.iban).toBe('CH6431960000442155 7');
+    expect(p.creditorName).toBe('Max Muster & Soehne');
+    expect(p.creditorAddress).toBe('Musterstrasse 123');
+    expect(p.creditorPostalCode).toBe('8000');
+    expect(p.creditorCity).toBe('Seldwyla');
+    expect(p.creditorCountry).toBe('CH');
+    expect(p.amount).toBe('50.00');
+    expect(p.currency).toBe('CHF');
+    expect(p.debtorName).toBe('Simon Muster');
+    expect(p.debtorAddress).toBe('Musterstrasse 1');
+    expect(p.debtorPostalCode).toBe('8000');
+    expect(p.debtorCity).toBe('Seldwyla');
+    expect(p.referenceType).toBe('QRR');
+    expect(p.reference).toBe('000008207791225857421286694');
+    expect(p.message).toBe('Payment of travel');
+  });
+
+  it('parses combined address (type K)', () => {
+    const spc = [
+      'SPC',
+      '0200',
+      '1',
+      'CH5800791123000889012',
+      'K',                     // combined address
+      'Example Ltd',
+      'Bahnhofstrasse 10',     // street + building
+      '3001 Bern',             // postal code + city combined
+      '',
+      '',
+      'CH',
+      '', '', '', '', '', '', '',
+      '199.95',
+      'CHF',
+      'K',
+      'Maria Bernasconi',
+      'Via Esempio 3',
+      '6900 Lugano',
+      '', '',
+      'CH',
+      'SCOR',
+      'RF18539007547034',
+      '',
+      'EPD'
+    ].join('\n');
+    const p = parsePayload(spc);
+    expect(p.kind).toBe('swissqr');
+    if (p.kind !== 'swissqr') return;
+    expect(p.creditorName).toBe('Example Ltd');
+    expect(p.creditorAddress).toBe('Bahnhofstrasse 10');
+    expect(p.creditorCity).toBe('3001 Bern');
+    expect(p.creditorPostalCode).toBeUndefined();
+    expect(p.amount).toBe('199.95');
+    expect(p.currency).toBe('CHF');
+    expect(p.debtorName).toBe('Maria Bernasconi');
+    expect(p.referenceType).toBe('SCOR');
+    expect(p.reference).toBe('RF18539007547034');
+  });
+
+  it('handles missing optional fields gracefully', () => {
+    const spc = [
+      'SPC',
+      '0200',
+      '1',
+      'CH5800791123000889012',
+      'S',
+      'Example Charity',
+      '', '', '', '',
+      'CH',
+      '', '', '', '', '', '', '',
+      '',       // no amount
+      'EUR',
+      '', '', '', '', '', '', '',
+      'NON',
+      '',
+      'Donation',
+      'EPD'
+    ].join('\n');
+    const p = parsePayload(spc);
+    expect(p.kind).toBe('swissqr');
+    if (p.kind !== 'swissqr') return;
+    expect(p.creditorName).toBe('Example Charity');
+    expect(p.amount).toBeUndefined();
+    expect(p.currency).toBe('EUR');
+    expect(p.debtorName).toBeUndefined();
+    expect(p.referenceType).toBe('NON');
+    expect(p.reference).toBeUndefined();
+    expect(p.message).toBe('Donation');
+  });
+
+  it('parses bill information on line 31', () => {
+    const spc = [
+      'SPC',
+      '0200',
+      '1',
+      'CH5800791123000889012',
+      'S',
+      'Example AG',
+      'Teststrasse', '1', '3000', 'Bern', 'CH',
+      '', '', '', '', '', '', '',
+      '100.00',
+      'CHF',
+      '', '', '', '', '', '', '',
+      'NON',
+      '',
+      '',
+      'EPD',
+      '//S1/10/10201409/11/190512/20/1400.000-53/30/106017086/31/180508/32/7.7/40/2:10;0:30'
+    ].join('\n');
+    const p = parsePayload(spc);
+    expect(p.kind).toBe('swissqr');
+    if (p.kind !== 'swissqr') return;
+    expect(p.billInfo).toBe('//S1/10/10201409/11/190512/20/1400.000-53/30/106017086/31/180508/32/7.7/40/2:10;0:30');
+  });
+});
+
 describe('Generic URL and text', () => {
   it('classifies http(s) as url (no special parsing)', () => {
     expect(parsePayload('https://example.com/page').kind).toBe('url');

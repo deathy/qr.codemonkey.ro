@@ -175,6 +175,50 @@ export function ParsedBody({ parsed }: { parsed: Parsed }) {
           <p class="parsed-warn">Always verify payee and IBAN before paying anyone.</p>
         </div>
       );
+    case 'swissqr':
+      return (
+        <div class="parsed">
+          {parsed.creditorName && <Field label="Payable to">{parsed.creditorName}</Field>}
+          {parsed.iban && <Field label="Account / Payable to">{parsed.iban}</Field>}
+          {(parsed.creditorAddress || parsed.creditorCity) && (
+            <Field label="Address">
+              {[
+                parsed.creditorAddress,
+                [parsed.creditorPostalCode, parsed.creditorCity].filter(Boolean).join(' '),
+                parsed.creditorCountry
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            </Field>
+          )}
+          {parsed.reference && (
+            <Field label="Reference">{parsed.reference}</Field>
+          )}
+          {parsed.message && <Field label="Additional information">{parsed.message}</Field>}
+          {parsed.amount && (
+            <Field label="Amount">
+              {parsed.amount} {parsed.currency}
+            </Field>
+          )}
+          {!parsed.amount && parsed.currency && (
+            <Field label="Currency">{parsed.currency}</Field>
+          )}
+          {parsed.debtorName && <Field label="Payable by">{parsed.debtorName}</Field>}
+          {(parsed.debtorAddress || parsed.debtorCity) && (
+            <Field label="Debtor address">
+              {[
+                parsed.debtorAddress,
+                [parsed.debtorPostalCode, parsed.debtorCity].filter(Boolean).join(' '),
+                parsed.debtorCountry
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            </Field>
+          )}
+          {parsed.billInfo && <Field label="Bill information">{parsed.billInfo}</Field>}
+          <p class="parsed-warn">Always verify payee and IBAN before paying anyone.</p>
+        </div>
+      );
     case 'otp':
       return (
         <div class="parsed">
@@ -259,6 +303,8 @@ export function ParsedActions({ parsed }: { parsed: Parsed }) {
         </button>
       );
     case 'sepa':
+      return parsed.iban ? <CopyButton label="Copy IBAN" value={parsed.iban} /> : null;
+    case 'swissqr':
       return parsed.iban ? <CopyButton label="Copy IBAN" value={parsed.iban} /> : null;
     case 'otp':
       return parsed.secret ? <CopyButton label="Copy secret" value={parsed.secret} /> : null;
