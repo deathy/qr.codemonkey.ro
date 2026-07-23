@@ -84,6 +84,27 @@ export interface SepaData {
   currency?: string;
   reference?: string;
 }
+export interface SwissQrBillData {
+  kind: 'swissqr';
+  raw: string;
+  iban?: string;
+  creditorName?: string;
+  creditorAddress?: string;
+  creditorPostalCode?: string;
+  creditorCity?: string;
+  creditorCountry?: string;
+  amount?: string;
+  currency?: string;
+  debtorName?: string;
+  debtorAddress?: string;
+  debtorPostalCode?: string;
+  debtorCity?: string;
+  debtorCountry?: string;
+  referenceType?: string; // QRR | SCOR | NON
+  reference?: string;
+  message?: string;
+  billInfo?: string;
+}
 export interface OtpData {
   kind: 'otp';
   raw: string;
@@ -114,6 +135,7 @@ export type Parsed =
   | CalendarData
   | BoardingPassData
   | SepaData
+  | SwissQrBillData
   | OtpData
   | UrlData
   | TextData;
@@ -130,6 +152,7 @@ const KIND_LABELS: Record<ParsedKind, string> = {
   calendar: 'Event',
   boardingpass: 'Boarding pass',
   sepa: 'Payment',
+  swissqr: 'Swiss QR Bill',
   otp: '2FA / OTP',
   url: 'Link',
   text: 'Text'
@@ -414,6 +437,68 @@ function parseSepa(raw: string): SepaData | TextData {
   };
 }
 
+/** Format a Swiss QR Bill structured or combined address into a readable string. */
+function formatSwissAddress(
+  type: string,
+  line1: string,
+  line2: string,
+  postalCode: string,
+  city: string
+): { address?: string; postalCode?: string; city?: string } {
+  if (type === 'S') {
+    // Structured: line1=street, line2=building number
+    const street = [line1, line2].filter(Boolean).join(' ') || undefined;
+    return { address: street, postalCode: postalCode || undefined, city: city || undefined };
+  }
+  // Combined (K): line1=street + building, line2=postalCode + city
+  return { address: line1 || undefined, postalCode: undefined, city: line2 || undefined };
+}
+
+function parseSwissQrBill(raw: string): SwissQrBillData | TextData {
+  const lines = raw.split(/\r?\n/);
+  // Minimum: SPC header + version + coding + IBAN = at least 4 lines
+  if (lines.length < 4 || (lines[0] || '').trim() !== 'SPC') return { kind: 'text', raw };
+
+  const line = (i: number) => (lines[i] || '').trim();
+
+  const creditorType = line(4);
+  const creditor = formatSwissAddress(creditorType, line(6), line(7), line(8), line(9));
+
+  const debtorType = line(20);
+  const debtor = formatSwissAddress(debtorType, line(22), line(23), line(24), line(25));
+
+  const amount = line(18) || undefined;
+  const currency = line(19) || undefined;
+
+  const referenceType = line(27) || undefined;
+  const reference = line(28) || undefined;
+  const message = line(29) || undefined;
+  // Line 30 is the trailer "EPD"; line 31+ is bill information
+  const billInfo = line(31) || undefined;
+
+  return {
+    kind: 'swissqr',
+    raw,
+    iban: line(3) || undefined,
+    creditorName: line(5) || undefined,
+    creditorAddress: creditor.address,
+    creditorPostalCode: creditor.postalCode,
+    creditorCity: creditor.city,
+    creditorCountry: line(10) || undefined,
+    amount,
+    currency,
+    debtorName: line(21) || undefined,
+    debtorAddress: debtor.address,
+    debtorPostalCode: debtor.postalCode,
+    debtorCity: debtor.city,
+    debtorCountry: line(26) || undefined,
+    referenceType,
+    reference,
+    message,
+    billInfo
+  };
+}
+
 function looksLikeBoardingPass(v: string): boolean {
   // IATA BCBP "M" format: 'M', leg count digit, >=60 mandatory chars, and
   // 3-letter from/to airport codes at their fixed offsets.
@@ -474,6 +559,7 @@ export function parsePayload(raw: string): Parsed {
     if (lower.startsWith('tel:')) return { kind: 'phone', raw: v, number: v.slice(4).trim() };
     if (lower.startsWith('smsto:') || lower.startsWith('sms:')) return parseSms(v);
     if (v.startsWith('BCD\n') || v.startsWith('BCD\r\n')) return parseSepa(v);
+    if (v.startsWith('SPC\n') || v.startsWith('SPC\r\n')) return parseSwissQrBill(v);
     if (looksLikeBoardingPass(v)) return parseBoardingPass(v);
     if (/^https?:\/\//i.test(v)) return { kind: 'url', raw: v };
     if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return { kind: 'email', raw: v, to: v };
