@@ -35,14 +35,14 @@
     "@zxing/browser": "0.2.1",
     "@zxing/library": "0.23.0",
     "idb": "8.0.4",
-    "preact": "11.0.2"
+    "preact": "11.1.1"
   },
   "devDependencies": {
     "@preact/preset-vite": "2.10.6",
     "qrcode": "1.5.4",
     "typescript": "7.0.2",
-    "vite": "8.3.5",
+    "vite": "8.3.6",
     "vite-plugin-pwa": "2.0.0",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   }
 }
