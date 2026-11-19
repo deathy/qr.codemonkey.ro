@@ -193,3 +193,19 @@ features, not incidentals.
 - **Test hygiene:** parser tests use only fictional/public data — made-up names,
   reserved `555` numbers, `example.com`, the canonical public example IBAN, the RFC
   OTP test secret; real airport codes are fine (public).
+
+## D16 — Camera start gate + permission guidance
+
+- **Problem:** On an iPhone the camera failed with "permission denied" and no prompt
+  ever appeared. iOS returns `NotAllowedError` *silently* whenever a deny is already
+  stored — Safari's per-site setting, the browser app's own OS camera permission
+  (Chrome/Firefox/Edge on iOS), an in-app webview (Instagram, Facebook…), or Screen
+  Time. No web code can force the prompt back.
+- **Decision:** Start the camera automatically only when permission is already
+  `granted` (or it has worked on this device before — a localStorage flag, for
+  browsers like Firefox that can't query the `camera` permission). Otherwise show a
+  **Start camera** button: a real user gesture, which some iOS browsers want before
+  prompting. Failures show a **Retry** button instead of "reload", plus **steps for
+  the detected browser/OS** (`src/lib/camera-help.ts`, pure + unit-tested). In-app
+  browsers get an "Open in Safari / browser" warning up front. A `permissions` change
+  listener restarts the camera when the user flips the setting with the page open.
