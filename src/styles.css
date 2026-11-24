@@ -227,6 +227,22 @@ button.active {
   background: var(--bg);
   z-index: 1;
 }
+.history-bar button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Destructive action: deliberately the smallest, quietest target in the bar,
+   set slightly apart so it isn't hit by accident on mobile. */
+.history-bar button.danger {
+  font-size: 0.8em;
+  padding: 6px 8px;
+  margin-left: 6px;
+  background: transparent;
+  border-color: transparent;
+}
+.history-bar button.danger:not(:disabled):hover {
+  border-color: #7f1d1d;
+}
 .empty {
   color: var(--text-dim);
   text-align: center;
