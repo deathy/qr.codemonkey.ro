@@ -13,6 +13,7 @@ Phased, so the app is useful early and stays focused. Checkboxes track the MVP.
 - [x] Optional GPS capture (off by default)
 - [x] Optional camera-frame capture (off by default)
 - [x] JSON export (self-contained, images inlined)
+- [x] JSON import / restore (merge by id; see D6)
 - [x] PWA: installable + offline
 - [x] Validate decode on real test sheets (S24 / Chrome) — PDF417 boarding pass works
       once focus is fixed; native is weak on PDF417, so Capture routes via ZXing
@@ -42,7 +43,7 @@ Phased, so the app is useful early and stays focused. Checkboxes track the MVP.
 
 ## Phase 3 — Beyond
 
-- [ ] CSV export; JSON import / restore
+- [ ] CSV export
 - [ ] Optional grouping/dedup view (collapse repeats, keep underlying events)
 - [ ] Open-source the repository publicly
 - [ ] (Maybe) opt-in privacy-respecting analytics via PostHog

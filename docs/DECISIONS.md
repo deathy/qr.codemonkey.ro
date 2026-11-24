@@ -73,7 +73,14 @@ features, not incidentals.
   the file is self-contained. See `EXPORT_VERSION` in `src/lib/types.ts`.
 - **Why:** Keeping every scan with its timestamp matches the inventory/diary use
   case; the cooldown just stops a held-still product from logging in a loop.
-- **Deferred:** Import, CSV export.
+- **Import:** History → Import reads an export file and **merges** it into the
+  existing history: entries whose `id` already exists are skipped (same id = same
+  immutable scan), so re-importing a file is a no-op and restoring onto a fresh
+  device restores everything. Inlined `data:image/*;base64` frames are turned back
+  into blobs; anything else in `image` is ignored. Malformed entries are dropped and
+  counted; a file from a newer `EXPORT_VERSION` is refused. Parsing is pure and
+  unit-tested (`src/lib/import.ts`); the insert is one IndexedDB transaction.
+- **Deferred:** CSV export.
 
 ## D7 — Privacy posture
 

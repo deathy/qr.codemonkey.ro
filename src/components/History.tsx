@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ScanEntry } from '../lib/types';
 import { formatLabel } from '../lib/content';
 import { parsePayload, kindLabel } from '../lib/parse';
@@ -11,15 +11,34 @@ interface Props {
   onNote: (id: string, note: string) => void;
   onClearAll: () => void;
   onExport: () => void;
+  onImport: (file: File) => void;
 }
 
-export function History({ entries, onDelete, onNote, onClearAll, onExport }: Props) {
+export function History({ entries, onDelete, onNote, onClearAll, onExport, onImport }: Props) {
+  const fileInput = useRef<HTMLInputElement>(null);
   return (
     <div class="history">
       <div class="history-bar">
         <span>{entries.length} {entries.length === 1 ? 'scan' : 'scans'}</span>
         <span class="spacer" />
-        <button onClick={onExport} disabled={!entries.length}>Export JSON</button>
+        <button onClick={() => fileInput.current?.click()} title="Import scans from a JSON export">
+          Import
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={(ev) => {
+            const input = ev.target as HTMLInputElement;
+            const file = input.files?.[0];
+            input.value = ''; // allow re-picking the same file
+            if (file) onImport(file);
+          }}
+        />
+        <button onClick={onExport} disabled={!entries.length} title="Export all scans as JSON">
+          Export
+        </button>
         <button
           class="danger"
           onClick={() => {
@@ -31,7 +50,7 @@ export function History({ entries, onDelete, onNote, onClearAll, onExport }: Pro
         </button>
       </div>
 
-      {!entries.length && <p class="empty">No scans yet. Scanned codes will appear here.</p>}
+      {!entries.length && <p class="empty">No scans yet. Scanned codes will appear here, or use Import to restore a JSON export.</p>}
 
       <ul class="entry-list">
         {entries.map((e) => (

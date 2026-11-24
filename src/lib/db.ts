@@ -44,6 +44,32 @@ export async function addEntry(entry: ScanEntry, image?: Blob): Promise<void> {
   await tx.done;
 }
 
+/**
+ * Add imported entries in one transaction, skipping any whose id already exists.
+ * Returns how many were added and how many were skipped as duplicates.
+ */
+export async function importEntries(
+  items: { entry: ScanEntry; image?: Blob }[]
+): Promise<{ added: number; skipped: number }> {
+  const database = await db();
+  const tx = database.transaction(['entries', 'images'], 'readwrite');
+  const entries = tx.objectStore('entries');
+  const images = tx.objectStore('images');
+  let added = 0;
+  let skipped = 0;
+  for (const { entry, image } of items) {
+    if (await entries.getKey(entry.id)) {
+      skipped++;
+      continue;
+    }
+    await entries.add(entry);
+    if (image) await images.put(image, entry.id);
+    added++;
+  }
+  await tx.done;
+  return { added, skipped };
+}
+
 export async function getAllEntries(): Promise<ScanEntry[]> {
   const database = await db();
   // Newest first.
